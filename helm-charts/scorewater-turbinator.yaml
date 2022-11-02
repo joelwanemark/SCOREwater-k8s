@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: scorewater-turbinator
+  name: scorewater-turbinator
+  namespace: turbinator
+spec:
+  selector:
+    matchLabels:
+      app: scorewater-turbinator
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: scorewater-turbinator
+    spec:
+      containers:
+        - name: scorewater-turbinator
+          image: scorewater-turbinator
+#          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http-iotagent
+              protocol: TCP
+      #    readinessProbe:
+      #      failureThreshold: 3
+      #      httpGet:
+      #        path: /version
+      #        port: 1026
+      #        scheme: HTTP
+      #      initialDelaySeconds: 10
+      #      periodSeconds: 30
+      #      successThreshold: 1
+      #      timeoutSeconds: 2
+      #    livenessProbe:
+      #      failureThreshold: 3
+      #      initialDelaySeconds: 30
+      #      periodSeconds: 10
+      #      successThreshold: 1
+      #      tcpSocket:
+      #        port: 1026
+      #      timeoutSeconds: 1
+#          resources:
+#            requests:
+#              cpu: 25m
+#              memory: 25Mi
+          env:
+          - name: ACTIVEMQ_BROKER_URL
+            value: "tcp://active-mq:61616"
+          - name: ACTIVEMQ_QUEUE_NAME_PREFIX
+            value: "turbinator"
+          - name: CONTEXT_BROKER_URL
+            value: "http://orion:1026"
+          - name: CONTEXT_BROKER_SERVICE
+            value: "turbinator"
+          - name: MQTT_BROKER_URL
+            value: "tcp://active-mq"
+          - name: MQTT_BROKER_PORT
+            value: "1883"
+          - name: MQTT_BROKER_USERNAME
+            value: "admin"
+          - name: MQTT_BROKER_PASSWORD
+            value: "admin"
+          - name: MQTT_BROKER_TOPIC
+            value: "/sensor/turbinator/#"
+          - name: PG_HOST
+            value: "postgis"
+          - name: PG_PORT
+            value: "5432"
+          - name: PG_DATABASE
+            value: "turbinator"
+          - name: PG_USER
+            value: "turbinator"
+          - name: PG_PASSWORD
+            value: "password"
+          - name: ACTIVEMQ_CONCURRENT_CONSUMERS
+            value: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scorewater-turbinator
+  namespace: turbinator
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: http-iotagent
+  selector:
+    app: scorewater-turbinator
+  sessionAffinity: None
+  type: LoadBalancer
