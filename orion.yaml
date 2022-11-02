@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: orion
+  name: orion
+  namespace: turbinator
+spec:
+  selector:
+    matchLabels:
+      app: orion
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: orion
+    spec:
+      containers:
+        - name: orion
+          image: fiware/orion
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 1026
+              name: http-orion
+              protocol: TCP
+      #    readinessProbe:
+      #      failureThreshold: 3
+      #      httpGet:
+      #        path: /version
+      #        port: 1026
+      #        scheme: HTTP
+      #      initialDelaySeconds: 10
+      #      periodSeconds: 30
+      #      successThreshold: 1
+      #      timeoutSeconds: 2
+      #    livenessProbe:
+      #      failureThreshold: 3
+      #      initialDelaySeconds: 30
+      #      periodSeconds: 10
+      #      successThreshold: 1
+      #      tcpSocket:
+      #        port: 1026
+      #      timeoutSeconds: 1
+#          resources:
+#            requests:
+#              cpu: 25m
+#              memory: 25Mi
+          env:
+          - name: ORION_MONGO_HOST
+            value: "mongo"
+          - name: ORION_LOG_LEVEL
+            value: "DEBUG"
+          - name: ORION_PORT
+            value: "1026"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orion
+  namespace: turbinator
+spec:
+  ports:
+    - port: 1026
+      protocol: TCP
+      targetPort: http-orion
+  selector:
+    app: orion
+  sessionAffinity: None
+  type: LoadBalancer

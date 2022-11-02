@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: crate
+  namespace: turbinator
+spec:
+  serviceName: crate-set
+  replicas: 3
+  selector:
+    matchLabels:
+      app: crate
+  template:
+    metadata:
+      labels:
+        app: crate
+    spec:
+      initContainers:
+      - name: init-sysctl
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      containers:
+      - name: crate
+        image: crate:4.1.4
+        command:
+        - /docker-entrypoint.sh
+        - -Cnode.name=${HOSTNAME}
+        - -Ccluster.initial_master_nodes=crate-0,crate-1,crate-2
+        - -Cdiscovery.seed_providers=srv
+        - -Cdiscovery.srv.query=_crate-internal._tcp.crate-internal-service.${NAMESPACE}.svc.cluster.local
+        - -Cgateway.recover_after_nodes=2
+        - -Cgateway.expected_nodes=${EXPECTED_NODES}
+        - -Cpath.data=/data
+        resources:
+          limits:
+            memory: 512Mi
+        ports:
+        - name: crate-internal
+          containerPort: 4300
+        - name: crate-web
+          containerPort: 4200
+        - name: postgres
+          containerPort: 5432
+        volumeMounts:
+        - name: crate-data
+          mountPath: /data
+        env:
+        - name: CRATE_HEAP_SIZE
+          value: "256m"
+        - name: EXPECTED_NODES
+          value: "3"
+        - name: CLUSTER_NAME
+          value: "turbinator-crate"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+  volumeClaimTemplates:
+  - metadata:
+      name: crate-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
